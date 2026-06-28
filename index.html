@@ -331,16 +331,19 @@
     for (const item of window._galleryItems) {
       try {
         const url = await getDownloadURL(item);
+        const resp = await fetch(url);
+        const blob = await resp.blob();
+        const blobUrl = URL.createObjectURL(blob);
         const a = document.createElement("a");
-        a.href = url;
+        a.href = blobUrl;
         a.download = item.name.replace(/^\d+_/, "");
-        a.target = "_blank";
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
+        setTimeout(() => URL.revokeObjectURL(blobUrl), 5000);
         done++;
         downloadAllBtn.textContent = `⬇ ${done}/${window._galleryItems.length}`;
-        await new Promise(r => setTimeout(r, 800)); // small delay so browser doesn't block
+        await new Promise(r => setTimeout(r, 1000));
       } catch (e) {
         done++;
       }
