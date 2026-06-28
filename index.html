@@ -351,12 +351,20 @@
   const downloadAllBtn = document.getElementById("download-all-btn");
 
   downloadAllBtn.addEventListener("click", async () => {
-    if (!window._galleryItems || !window._galleryItems.length) return;
+    const toDownload = (window._galleryItems || []).filter(item => {
+      const name = item.name.replace(/^\d+_/, "");
+      return !ALREADY_UPLOADED.has(name);
+    });
+    if (!toDownload.length) {
+      downloadAllBtn.textContent = "Nothing new";
+      setTimeout(() => { downloadAllBtn.textContent = "⬇ Download All"; }, 2000);
+      return;
+    }
     downloadAllBtn.disabled = true;
-    downloadAllBtn.textContent = "⬇ 0/" + window._galleryItems.length;
+    downloadAllBtn.textContent = "⬇ 0/" + toDownload.length;
 
     let done = 0;
-    for (const item of window._galleryItems) {
+    for (const item of toDownload) {
       try {
         const url = await getDownloadURL(item);
         const resp = await fetch(url);
@@ -370,7 +378,7 @@
         document.body.removeChild(a);
         setTimeout(() => URL.revokeObjectURL(blobUrl), 5000);
         done++;
-        downloadAllBtn.textContent = `⬇ ${done}/${window._galleryItems.length}`;
+        downloadAllBtn.textContent = `⬇ ${done}/${toDownload.length}`;
         await new Promise(r => setTimeout(r, 1000));
       } catch (e) {
         done++;
