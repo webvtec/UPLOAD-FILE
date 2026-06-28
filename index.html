@@ -104,6 +104,20 @@
       padding: 16px 20px; border-bottom: 1px solid #222; flex-shrink: 0;
     }
     .gallery-header h2 { font-size: 1rem; font-weight: 600; color: #ddd; }
+
+    #download-all-btn {
+      padding: 6px 14px;
+      background: #1a3a1a;
+      color: #4ade80;
+      border: 1px solid #2a5a2a;
+      border-radius: 6px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    #download-all-btn:hover { background: #1f4a1f; }
+    #download-all-btn:disabled { opacity: 0.5; cursor: not-allowed; }
     #close-gallery {
       background: none; border: none; color: #888; font-size: 1.4rem;
       cursor: pointer; line-height: 1; padding: 4px 8px;
@@ -169,7 +183,10 @@
 <div id="gallery-overlay">
   <div class="gallery-header">
     <h2>📷 All Photos</h2>
-    <button id="close-gallery">✕</button>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <button id="download-all-btn">⬇ Download All</button>
+      <button id="close-gallery">✕</button>
+    </div>
   </div>
   <div id="gallery-status">Loading…</div>
   <div id="photo-grid"></div>
@@ -303,6 +320,39 @@
     lightboxImg.style.display = "block";
   }
 
+  const downloadAllBtn = document.getElementById("download-all-btn");
+
+  downloadAllBtn.addEventListener("click", async () => {
+    if (!window._galleryItems || !window._galleryItems.length) return;
+    downloadAllBtn.disabled = true;
+    downloadAllBtn.textContent = "⬇ 0/" + window._galleryItems.length;
+
+    let done = 0;
+    for (const item of window._galleryItems) {
+      try {
+        const url = await getDownloadURL(item);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = item.name.replace(/^\d+_/, "");
+        a.target = "_blank";
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        done++;
+        downloadAllBtn.textContent = `⬇ ${done}/${window._galleryItems.length}`;
+        await new Promise(r => setTimeout(r, 800)); // small delay so browser doesn't block
+      } catch (e) {
+        done++;
+      }
+    }
+
+    downloadAllBtn.textContent = "✓ Done";
+    setTimeout(() => {
+      downloadAllBtn.disabled = false;
+      downloadAllBtn.textContent = "⬇ Download All";
+    }, 3000);
+  });
+
   async function addCard(item) {
     const card = document.createElement("div");
     card.className = "grid-item";
@@ -367,6 +417,7 @@
       const folderRef = ref(storage, "uploads/");
       const result = await listAll(folderRef);
       const items = result.items.sort((a, b) => b.name.localeCompare(a.name));
+      window._galleryItems = items;
       galleryStatus.textContent = `${items.length} file${items.length !== 1 ? "s" : ""}`;
 
       for (let i = 0; i < items.length; i += 10) {
