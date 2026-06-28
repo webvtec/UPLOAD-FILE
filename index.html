@@ -27,12 +27,31 @@
       max-width: 520px;
     }
 
+    .top-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 6px;
+    }
+
     h1 {
       font-size: 1.4rem;
       font-weight: 600;
-      margin-bottom: 6px;
       letter-spacing: -0.02em;
     }
+
+    button#view-btn {
+      padding: 6px 16px;
+      background: #2a2a2a;
+      color: #ccc;
+      border: 1px solid #3a3a3a;
+      border-radius: 6px;
+      font-size: 0.82rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    button#view-btn:hover { background: #333; }
 
     p.sub {
       font-size: 0.85rem;
@@ -72,9 +91,7 @@
       color: #888;
     }
 
-    .drop-zone strong {
-      color: #ddd;
-    }
+    .drop-zone strong { color: #ddd; }
 
     #file-list {
       margin-top: 20px;
@@ -128,11 +145,7 @@
       transition: width 0.2s;
     }
 
-    .status {
-      font-size: 0.75rem;
-      color: #555;
-    }
-
+    .status { font-size: 0.75rem; color: #555; }
     .status.done { color: #4ade80; }
     .status.error { color: #f87171; }
 
@@ -152,11 +165,146 @@
 
     button#upload-btn:hover { background: #ddd; }
     button#upload-btn:disabled { background: #333; color: #666; cursor: not-allowed; }
+
+    /* ── Gallery overlay ── */
+    #gallery-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: #0a0a0a;
+      z-index: 100;
+      flex-direction: column;
+    }
+    #gallery-overlay.open { display: flex; }
+
+    .gallery-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 20px;
+      border-bottom: 1px solid #222;
+      flex-shrink: 0;
+    }
+
+    .gallery-header h2 { font-size: 1rem; font-weight: 600; color: #ddd; }
+
+    #close-gallery {
+      background: none;
+      border: none;
+      color: #888;
+      font-size: 1.4rem;
+      cursor: pointer;
+      line-height: 1;
+      padding: 4px 8px;
+    }
+    #close-gallery:hover { color: #fff; }
+
+    #gallery-status {
+      font-size: 0.78rem;
+      color: #555;
+      padding: 0 20px;
+      margin-top: 10px;
+      flex-shrink: 0;
+    }
+
+    #photo-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 3px;
+      padding: 10px;
+      overflow-y: auto;
+      flex: 1;
+    }
+
+    .grid-item {
+      aspect-ratio: 1;
+      overflow: hidden;
+      border-radius: 4px;
+      cursor: pointer;
+      background: #1a1a1a;
+      position: relative;
+    }
+
+    .grid-item img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+      transition: opacity 0.2s;
+    }
+
+    .grid-item:hover img { opacity: 0.85; }
+
+    .grid-item .dng-thumb {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      color: #555;
+      font-size: 0.7rem;
+      gap: 6px;
+    }
+
+    .grid-item .dng-thumb span { font-size: 1.8rem; }
+    .grid-item .fname {
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      background: linear-gradient(transparent, rgba(0,0,0,0.7));
+      font-size: 0.65rem;
+      color: #aaa;
+      padding: 16px 6px 5px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    /* ── Lightbox ── */
+    #lightbox {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.95);
+      z-index: 200;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+    }
+    #lightbox.open { display: flex; }
+
+    #lightbox img {
+      max-width: 95vw;
+      max-height: 88vh;
+      object-fit: contain;
+      border-radius: 4px;
+    }
+
+    #lightbox-name {
+      margin-top: 10px;
+      font-size: 0.78rem;
+      color: #666;
+    }
+
+    #close-lightbox {
+      position: fixed;
+      top: 16px; right: 20px;
+      background: none;
+      border: none;
+      color: #888;
+      font-size: 1.8rem;
+      cursor: pointer;
+      line-height: 1;
+    }
+    #close-lightbox:hover { color: #fff; }
   </style>
 </head>
 <body>
 <div class="card">
-  <h1>Upload Files</h1>
+  <div class="top-bar">
+    <h1>Upload Files</h1>
+    <button id="view-btn">📷 View Photos</button>
+  </div>
   <p class="sub">Select or drop any files — everyone can upload.</p>
 
   <div class="drop-zone" id="drop-zone">
@@ -172,29 +320,46 @@
   <button id="upload-btn" disabled>Upload</button>
 </div>
 
+<!-- Gallery overlay -->
+<div id="gallery-overlay">
+  <div class="gallery-header">
+    <h2>📷 All Photos</h2>
+    <button id="close-gallery">✕</button>
+  </div>
+  <div id="gallery-status">Loading photos…</div>
+  <div id="photo-grid"></div>
+</div>
+
+<!-- Lightbox -->
+<div id="lightbox">
+  <button id="close-lightbox">✕</button>
+  <img id="lightbox-img" src="" alt="" />
+  <div id="lightbox-name"></div>
+</div>
+
 <!-- Firebase SDK -->
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-  import { getStorage, ref, uploadBytesResumable } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
+  import { getStorage, ref, uploadBytesResumable, listAll, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
 
-  // 🔧 REPLACE WITH YOUR FIREBASE CONFIG
- const firebaseConfig = {
-  apiKey: "AIzaSyB-Ju8WQVdTqxGAHB_JBoC2kgZ3i2GOpxM",
-  authDomain: "travis-the-barber.firebaseapp.com",
-  projectId: "travis-the-barber",
-  storageBucket: "travis-the-barber.firebasestorage.app",
-  messagingSenderId: "713818270570",
-  appId: "1:713818270570:web:fe627ace00c4a3112ed313"
-};
+  const firebaseConfig = {
+    apiKey: "AIzaSyB-Ju8WQVdTqxGAHB_JBoC2kgZ3i2GOpxM",
+    authDomain: "travis-the-barber.firebaseapp.com",
+    projectId: "travis-the-barber",
+    storageBucket: "travis-the-barber.firebasestorage.app",
+    messagingSenderId: "713818270570",
+    appId: "1:713818270570:web:fe627ace00c4a3112ed313"
+  };
+
   const app = initializeApp(firebaseConfig);
   const storage = getStorage(app);
 
+  // ── Upload logic ──
   const fileInput = document.getElementById("file-input");
   const dropZone = document.getElementById("drop-zone");
   const fileList = document.getElementById("file-list");
   const uploadBtn = document.getElementById("upload-btn");
 
-  // Only these files didn't finish — filter everything else out
   const ALLOWED = new Set([
     "IMG_0431.jpeg","IMG_0430.jpeg","IMG_0429.jpeg","IMG_0428.dng",
     "IMG_0427.dng","IMG_0426.dng","IMG_0436.dng","IMG_0434.dng",
@@ -249,7 +414,6 @@
   }
 
   fileInput.addEventListener("change", () => applyFilter(fileInput.files));
-
   dropZone.addEventListener("dragover", (e) => { e.preventDefault(); dropZone.classList.add("drag-over"); });
   dropZone.addEventListener("dragleave", () => dropZone.classList.remove("drag-over"));
   dropZone.addEventListener("drop", (e) => {
@@ -294,6 +458,85 @@
       await uploadFile(selectedFiles[i], i);
     }
   });
+
+  // ── Gallery logic ──
+  const viewBtn = document.getElementById("view-btn");
+  const galleryOverlay = document.getElementById("gallery-overlay");
+  const closeGallery = document.getElementById("close-gallery");
+  const photoGrid = document.getElementById("photo-grid");
+  const galleryStatus = document.getElementById("gallery-status");
+  const lightbox = document.getElementById("lightbox");
+  const lightboxImg = document.getElementById("lightbox-img");
+  const lightboxName = document.getElementById("lightbox-name");
+  const closeLightbox = document.getElementById("close-lightbox");
+
+  viewBtn.addEventListener("click", openGallery);
+  closeGallery.addEventListener("click", () => galleryOverlay.classList.remove("open"));
+  closeLightbox.addEventListener("click", () => lightbox.classList.remove("open"));
+  lightbox.addEventListener("click", (e) => { if (e.target === lightbox) lightbox.classList.remove("open"); });
+
+  async function openGallery() {
+    galleryOverlay.classList.add("open");
+    photoGrid.innerHTML = "";
+    galleryStatus.textContent = "Loading photos…";
+
+    try {
+      const folderRef = ref(storage, "uploads/");
+      const result = await listAll(folderRef);
+
+      // Sort by name descending (newest first based on timestamp prefix)
+      const items = result.items.sort((a, b) => b.name.localeCompare(a.name));
+
+      galleryStatus.textContent = `${items.length} file${items.length !== 1 ? "s" : ""}`;
+
+      // Load thumbnails in batches to avoid hammering
+      for (const item of items) {
+        const card = document.createElement("div");
+        card.className = "grid-item";
+
+        const isDng = item.name.toLowerCase().endsWith(".dng");
+        const dispName = item.name.replace(/^\d+_/, ""); // strip timestamp prefix
+
+        if (isDng) {
+          card.innerHTML = `
+            <div class="dng-thumb"><span>🗂</span>${dispName}</div>
+            <div class="fname">${dispName}</div>
+          `;
+          card.addEventListener("click", async () => {
+            // Try to get download URL for DNG anyway (user can save it)
+            const url = await getDownloadURL(item);
+            window.open(url, "_blank");
+          });
+        } else {
+          const img = document.createElement("img");
+          img.alt = dispName;
+          img.loading = "lazy";
+          card.appendChild(img);
+          card.innerHTML += `<div class="fname">${dispName}</div>`;
+
+          getDownloadURL(item).then(url => {
+            img.src = url;
+            card.addEventListener("click", () => {
+              lightboxImg.src = url;
+              lightboxName.textContent = dispName;
+              lightbox.classList.add("open");
+            });
+          }).catch(() => {
+            card.innerHTML = `<div class="dng-thumb"><span>❌</span>${dispName}</div>`;
+          });
+        }
+
+        photoGrid.appendChild(card);
+      }
+
+      if (items.length === 0) {
+        galleryStatus.textContent = "No photos uploaded yet.";
+      }
+
+    } catch (err) {
+      galleryStatus.textContent = "Error loading photos: " + err.message;
+    }
+  }
 </script>
 </body>
 </html>
