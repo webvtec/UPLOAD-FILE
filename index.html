@@ -177,6 +177,7 @@
   </div>
 
   <div id="file-list"></div>
+  <div id="filter-notice" style="display:none; margin-top:12px; font-size:0.8rem; color:#f59e0b; background:#2a2000; border:1px solid #3a2f00; border-radius:6px; padding:8px 12px;"></div>
   <button id="upload-btn" disabled>Upload</button>
 </div>
 
@@ -221,6 +222,23 @@
 
   let selectedFiles = [];
 
+  const ALREADY_UPLOADED = new Set([
+    "IMG_0568.jpeg","IMG_0543.dng","IMG_0548.dng","IMG_0549.dng","IMG_0550.dng",
+    "IMG_0551.dng","IMG_0562.jpeg","IMG_0566.jpeg","IMG_0567.dng","IMG_0501.jpeg",
+    "IMG_0517.dng","IMG_0526.dng","IMG_0527.dng","IMG_0534.jpeg","IMG_0536.dng",
+    "IMG_0451.dng","IMG_0466.dng","IMG_0467.jpeg","IMG_0472.jpeg","IMG_0474.jpeg",
+    "IMG_0475.jpeg","IMG_0476.jpeg","IMG_0477.jpeg","IMG_0482.jpeg","IMG_0484.jpeg",
+    "IMG_0487.jpeg","IMG_0497.jpeg","IMG_0499.jpeg","IMG_0500.jpeg","IMG_0423.jpeg",
+    "IMG_0432.jpeg","IMG_0438.jpeg","IMG_0446.dng","IMG_0447.jpeg","IMG_0520.dng",
+    "IMG_0524.dng","IMG_0519.dng","IMG_0516.dng","IMG_0515.dng","IMG_0514.dng",
+    "IMG_0513.dng","IMG_0510.dng","IMG_0509.dng","IMG_0508.dng","IMG_0506.dng",
+    "IMG_0494.jpeg","IMG_0491.dng","IMG_0490.dng","IMG_0489.jpeg","IMG_0486.dng",
+    "IMG_0485.dng","IMG_0471.dng","IMG_0470.dng","IMG_0441.jpeg","IMG_0440.jpeg",
+    "IMG_0436.dng","IMG_0434.dng","IMG_0431.jpeg","IMG_0430.jpeg","IMG_0429.jpeg",
+    "IMG_0428.dng","IMG_0427.dng","IMG_0426.dng","IMG_0555.mov","IMG_0556.mov",
+    "IMG_0553.mov","IMG_0552.mov","IMG_0544.mov","IMG_0545.mov","IMG_0462.mov"
+  ]);
+
   function formatSize(bytes) {
     if (bytes < 1024) return bytes + " B";
     if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB";
@@ -246,18 +264,28 @@
     uploadBtn.disabled = selectedFiles.length === 0;
   }
 
-  fileInput.addEventListener("change", () => {
-    selectedFiles = Array.from(fileInput.files);
+  function applyFilter(files) {
+    const all = Array.from(files);
+    const accepted = all.filter(f => !ALREADY_UPLOADED.has(f.name));
+    const skipped = all.length - accepted.length;
+    selectedFiles = accepted;
     renderFiles();
-  });
+    const notice = document.getElementById("filter-notice");
+    if (skipped > 0) {
+      notice.textContent = `⚠️ ${skipped} file${skipped > 1 ? "s" : ""} skipped — already uploaded.`;
+      notice.style.display = "block";
+    } else {
+      notice.style.display = "none";
+    }
+  }
 
+  fileInput.addEventListener("change", () => applyFilter(fileInput.files));
   dropZone.addEventListener("dragover", (e) => { e.preventDefault(); dropZone.classList.add("drag-over"); });
   dropZone.addEventListener("dragleave", () => dropZone.classList.remove("drag-over"));
   dropZone.addEventListener("drop", (e) => {
     e.preventDefault();
     dropZone.classList.remove("drag-over");
-    selectedFiles = Array.from(e.dataTransfer.files);
-    renderFiles();
+    applyFilter(e.dataTransfer.files);
   });
 
   function uploadFile(file, i) {
