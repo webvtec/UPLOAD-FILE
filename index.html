@@ -308,7 +308,7 @@
   <p class="sub">Select or drop any files — everyone can upload.</p>
 
   <div class="drop-zone" id="drop-zone">
-    <input type="file" id="file-input" multiple />
+    <input type="file" id="file-input" multiple accept="image/*,video/*,.dng" />
     <div class="drop-icon">📂</div>
     <span><strong>Click to select</strong> or drag files here</span>
     <span style="margin-top:4px; font-size:0.78rem;">Multiple files supported</span>
@@ -472,8 +472,15 @@
 
   viewBtn.addEventListener("click", openGallery);
   closeGallery.addEventListener("click", () => galleryOverlay.classList.remove("open"));
-  closeLightbox.addEventListener("click", () => lightbox.classList.remove("open"));
-  lightbox.addEventListener("click", (e) => { if (e.target === lightbox) lightbox.classList.remove("open"); });
+  closeLightbox.addEventListener("click", () => { closeLightboxFn(); });
+  lightbox.addEventListener("click", (e) => { if (e.target === lightbox) closeLightboxFn(); });
+
+  function closeLightboxFn() {
+    lightbox.classList.remove("open");
+    const vid = document.getElementById("lightbox-video");
+    if (vid) { vid.pause(); vid.src = ""; vid.style.display = "none"; }
+    lightboxImg.style.display = "block";
+  }
 
   async function openGallery() {
     galleryOverlay.classList.add("open");
@@ -495,7 +502,8 @@
         card.className = "grid-item";
 
         const isDng = item.name.toLowerCase().endsWith(".dng");
-        const dispName = item.name.replace(/^\d+_/, ""); // strip timestamp prefix
+        const isVideo = /\.(mp4|mov|avi|mkv|webm|m4v)$/i.test(item.name);
+        const dispName = item.name.replace(/^\d+_/, "");
 
         if (isDng) {
           card.innerHTML = `
@@ -503,9 +511,30 @@
             <div class="fname">${dispName}</div>
           `;
           card.addEventListener("click", async () => {
-            // Try to get download URL for DNG anyway (user can save it)
             const url = await getDownloadURL(item);
             window.open(url, "_blank");
+          });
+        } else if (isVideo) {
+          card.innerHTML = `
+            <div class="dng-thumb"><span>🎬</span>${dispName}</div>
+            <div class="fname">${dispName}</div>
+          `;
+          getDownloadURL(item).then(url => {
+            card.addEventListener("click", () => {
+              lightboxImg.style.display = "none";
+              let vid = document.getElementById("lightbox-video");
+              if (!vid) {
+                vid = document.createElement("video");
+                vid.id = "lightbox-video";
+                vid.controls = true;
+                vid.style.cssText = "max-width:95vw;max-height:88vh;border-radius:4px;";
+                lightboxImg.parentNode.insertBefore(vid, lightboxImg);
+              }
+              vid.src = url;
+              vid.style.display = "block";
+              lightboxName.textContent = dispName;
+              lightbox.classList.add("open");
+            });
           });
         } else {
           const img = document.createElement("img");
@@ -517,6 +546,9 @@
           getDownloadURL(item).then(url => {
             img.src = url;
             card.addEventListener("click", () => {
+              const vid = document.getElementById("lightbox-video");
+              if (vid) { vid.pause(); vid.src = ""; vid.style.display = "none"; }
+              lightboxImg.style.display = "block";
               lightboxImg.src = url;
               lightboxName.textContent = dispName;
               lightbox.classList.add("open");
