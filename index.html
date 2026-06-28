@@ -544,7 +544,21 @@
           card.innerHTML += `<div class="fname">${dispName}</div>`;
 
           getDownloadURL(item).then(url => {
-            img.src = url;
+            // Load full image then draw a small thumbnail via canvas
+            const loader = new Image();
+            loader.crossOrigin = "anonymous";
+            loader.onload = () => {
+              const canvas = document.createElement("canvas");
+              const MAX = 300;
+              const ratio = Math.min(MAX / loader.width, MAX / loader.height);
+              canvas.width = loader.width * ratio;
+              canvas.height = loader.height * ratio;
+              canvas.getContext("2d").drawImage(loader, 0, 0, canvas.width, canvas.height);
+              img.src = canvas.toDataURL("image/jpeg", 0.7);
+            };
+            loader.onerror = () => { img.src = url; }; // fallback to direct
+            loader.src = url;
+
             card.addEventListener("click", () => {
               const vid = document.getElementById("lightbox-video");
               if (vid) { vid.pause(); vid.src = ""; vid.style.display = "none"; }
