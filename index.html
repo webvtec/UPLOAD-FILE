@@ -167,6 +167,7 @@
   </div>
 
   <div id="file-list"></div>
+  <div id="filter-notice" style="display:none; margin-top:12px; font-size:0.8rem; color:#f59e0b; background:#2a2000; border:1px solid #3a2f00; border-radius:6px; padding:8px 12px;"></div>
 
   <button id="upload-btn" disabled>Upload</button>
 </div>
@@ -192,6 +193,18 @@
   const dropZone = document.getElementById("drop-zone");
   const fileList = document.getElementById("file-list");
   const uploadBtn = document.getElementById("upload-btn");
+
+  // Only these files didn't finish — filter everything else out
+  const ALLOWED = new Set([
+    "IMG_0431.jpeg","IMG_0430.jpeg","IMG_0429.jpeg","IMG_0428.dng",
+    "IMG_0427.dng","IMG_0426.dng","IMG_0436.dng","IMG_0434.dng",
+    "IMG_0440.jpeg","IMG_0441.jpeg","IMG_0471.dng","IMG_0470.dng",
+    "IMG_0485.dng","IMG_0486.dng","IMG_0489.jpeg","IMG_0490.dng",
+    "IMG_0491.dng","IMG_0494.jpeg","IMG_0506.dng","IMG_0508.dng",
+    "IMG_0509.dng","IMG_0510.dng","IMG_0513.dng","IMG_0514.dng",
+    "IMG_0515.dng","IMG_0516.dng","IMG_0519.dng","IMG_0520.dng",
+    "IMG_0524.dng"
+  ]);
 
   let selectedFiles = [];
 
@@ -220,30 +233,38 @@
     uploadBtn.disabled = selectedFiles.length === 0;
   }
 
-  fileInput.addEventListener("change", () => {
-    selectedFiles = Array.from(fileInput.files);
+  function applyFilter(files) {
+    const all = Array.from(files);
+    const accepted = all.filter(f => ALLOWED.has(f.name));
+    const skipped = all.length - accepted.length;
+    selectedFiles = accepted;
     renderFiles();
-  });
+    const notice = document.getElementById("filter-notice");
+    if (skipped > 0) {
+      notice.textContent = `⚠️ ${skipped} file${skipped > 1 ? "s" : ""} skipped — already uploaded or not in the list.`;
+      notice.style.display = "block";
+    } else {
+      notice.style.display = "none";
+    }
+  }
+
+  fileInput.addEventListener("change", () => applyFilter(fileInput.files));
 
   dropZone.addEventListener("dragover", (e) => { e.preventDefault(); dropZone.classList.add("drag-over"); });
   dropZone.addEventListener("dragleave", () => dropZone.classList.remove("drag-over"));
   dropZone.addEventListener("drop", (e) => {
     e.preventDefault();
     dropZone.classList.remove("drag-over");
-    selectedFiles = Array.from(e.dataTransfer.files);
-    renderFiles();
+    applyFilter(e.dataTransfer.files);
   });
 
-  uploadBtn.addEventListener("click", () => {
-    if (!selectedFiles.length) return;
-    uploadBtn.disabled = true;
-
-    selectedFiles.forEach((file, i) => {
+  function uploadFile(file, i) {
+    return new Promise((resolve) => {
       const storageRef = ref(storage, `uploads/${Date.now()}_${file.name}`);
       const task = uploadBytesResumable(storageRef, file);
       const prog = document.getElementById(`prog-${i}`);
       const status = document.getElementById(`status-${i}`);
-
+      document.getElementById(`file-${i}`)?.scrollIntoView({ behavior: "smooth", block: "nearest" });
       task.on("state_changed",
         (snap) => {
           const pct = Math.round((snap.bytesTransferred / snap.totalBytes) * 100);
@@ -253,14 +274,25 @@
         (err) => {
           status.textContent = "Failed: " + err.message;
           status.className = "status error";
+          resolve();
         },
         () => {
           prog.style.width = "100%";
           status.textContent = "Done ✓";
           status.className = "status done";
+          resolve();
         }
       );
     });
+  }
+
+  uploadBtn.addEventListener("click", async () => {
+    if (!selectedFiles.length) return;
+    uploadBtn.disabled = true;
+    for (let i = 0; i < selectedFiles.length; i++) {
+      document.getElementById(`status-${i}`).textContent = "Uploading…";
+      await uploadFile(selectedFiles[i], i);
+    }
   });
 </script>
 </body>
